@@ -2,13 +2,13 @@ package hexonet
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"io/ioutil"
+	"regexp"
 	"strconv"
 	"sync"
 	"time"
-  "io"
-	"fmt"
-  "regexp"
 
 	CL "github.com/hexonet/go-sdk/apiclient"
 	"github.com/libdns/libdns"

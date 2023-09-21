@@ -1,4 +1,4 @@
-module github.com/tojjx/hexonet
+module github.com/tojjx/libdns-hexonet
 
 go 1.21.1
 
