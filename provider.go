@@ -60,7 +60,31 @@ func (p *Provider) SetRecords(ctx context.Context, zone string, records []libdns
 		return nil, err
 	}
 
-	err = c.updateDNSEntry(ctx, zone, records)
+	alls, err := c.getDNSEntries(ctx, zone)
+	if err != nil {
+		return nil, err
+	}
+	// key+value is uniq in dns record
+	visited := map[string]libdns.Record{}
+	for i := range alls {
+		key := alls[i].Type + ":" + alls[i].Value
+		visited[key] = alls[i]
+	}
+	var adds, dels []libdns.Record
+	for i := range records {
+		key := records[i].Type + ":" + records[i].Value
+		if old, ok := visited[key]; !ok {
+			adds = append(adds, records[i])
+		} else {
+			dels = append(dels, old)
+			adds = append(adds, records[i])
+		}
+	}
+	err = c.removeDNSEntry(ctx, zone, dels)
+	if err != nil {
+		return nil, err
+	}
+	err = c.addDNSEntry(ctx, zone, adds)
 	if err != nil {
 		return nil, err
 	}

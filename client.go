@@ -12,6 +12,7 @@ import (
 
 	CL "github.com/hexonet/go-sdk/apiclient"
 	"github.com/libdns/libdns"
+	"github.com/tojjx/libdns-hexonet/txtsanitize"
 )
 
 type client struct {
@@ -25,6 +26,7 @@ func newClient(username, password string, debug io.Writer) (*client, error) {
 	}
 	c := CL.NewAPIClient()
 	c.SetCredentials(username, password) //username, password
+	// c = c.EnableDebugMode()
 	resp := c.Login()
 	if !resp.IsSuccess() {
 		return nil, fmt.Errorf("login failed, response code:%d description:%s\n", resp.GetCode(), resp.GetDescription())
@@ -72,9 +74,11 @@ func (c *client) addDNSEntry(ctx context.Context, zone string, records []libdns.
 	}
 	for i := range records {
 		key := fmt.Sprintf("addrr%d", i)
-		val := fmt.Sprintf("%s %d IN %s %s", records[i].Name, int(records[i].TTL.Seconds()), records[i].Type, records[i].Value)
+		val := fmt.Sprintf("%s %d IN %s %s", records[i].Name, int(records[i].TTL.Seconds()), records[i].Type, TXTSanitize(records[i]))
 		cmd[key] = val
 	}
+	// fmt.Printf("cmd:%#v\n", cmd)
+
 	resp := c.client.Request(cmd)
 	if !resp.IsSuccess() {
 		return fmt.Errorf("addDNSEntry failed, response code:%d description:%s\n", resp.GetCode(), resp.GetDescription())
@@ -92,9 +96,11 @@ func (c *client) removeDNSEntry(ctx context.Context, zone string, records []libd
 	}
 	for i := range records {
 		key := fmt.Sprintf("delrr%d", i)
-		val := fmt.Sprintf("%s %d IN %s %s", records[i].Name, int(records[i].TTL.Seconds()), records[i].Type, records[i].Value)
+		val := fmt.Sprintf("%s %d IN %s %s", records[i].Name, int(records[i].TTL.Seconds()), records[i].Type, TXTSanitize(records[i]))
 		cmd[key] = val
 	}
+	// fmt.Printf("cmd:%#v\n", cmd)
+
 	resp := c.client.Request(cmd)
 	if !resp.IsSuccess() {
 		return fmt.Errorf("removeDNSEntry failed, response code:%d description:%s\n", resp.GetCode(), resp.GetDescription())
@@ -113,9 +119,11 @@ func (c *client) updateDNSEntry(ctx context.Context, zone string, records []libd
 	}
 	for i := range records {
 		key := fmt.Sprintf("rr%d", i)
-		val := fmt.Sprintf("%s %d IN %s %s", records[i].Name, int(records[i].TTL.Seconds()), records[i].Type, records[i].Value)
+		val := fmt.Sprintf("%s %d IN %s %s", records[i].Name, int(records[i].TTL.Seconds()), records[i].Type, TXTSanitize(records[i]))
 		cmd[key] = val
 	}
+	// fmt.Printf("cmd:%#v\n", cmd)
+
 	resp := c.client.Request(cmd)
 	if !resp.IsSuccess() {
 		return fmt.Errorf("updateDNSEntry failed, response code:%d description:%s\n", resp.GetCode(), resp.GetDescription())
@@ -135,5 +143,13 @@ func ParseRR(rr string) (name, ttl, typ, value string) {
 	typ = matches[3]
 	value = matches[4]
 
+	return
+}
+
+func TXTSanitize(record libdns.Record) (value string) {
+	value = record.Value
+	if record.Type == "TXT" {
+		value = txtsanitize.TXTSanitize(record.Value)
+	}
 	return
 }
